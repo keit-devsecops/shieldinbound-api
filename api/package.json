@@ -1,0 +1,13 @@
+{
+  "name": "shieldinbound-api",
+  "version": "1.0.0",
+  "description": "Azure Functions Backend Core",
+  "main": "src/functions/*.js",
+  "dependencies": {
+    "@azure/functions": "^4.0.0"
+  },
+  "scripts": {
+    "start": "func start",
+    "test": "echo \"No tests specified\" && exit 0"
+  }
+}

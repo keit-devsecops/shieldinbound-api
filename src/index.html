@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShieldInbound // FedRAMP Zero-Trust Control Plane</title>
+    <style>
+        body { font-family: monospace; background-color: #05070c; color: #00ff66; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .fedramp-banner { background: #1e1b4b; border: 1px solid #3b82f6; color: #93c5fd; padding: 12px; font-size: 11px; max-width: 800px; border-radius: 4px; margin-bottom: 20px; text-align: justify; line-height: 1.4; }
+        .suite-card { background: #0c101b; border: 1px solid #475569; padding: 30px; border-radius: 4px; width: 100%; max-width: 800px; box-shadow: 0 0 30px rgba(0,0,0,0.5); }
+        .classification-header { color: #64748b; font-size: 11px; font-weight: bold; letter-spacing: 2px; margin-bottom: 5px; display: flex; justify-content: space-between; }
+        h2 { color: #f8fafc; margin-top: 5px; margin-bottom: 20px; border-bottom: 1px solid #334155; padding-bottom: 12px; display: flex; justify-content: space-between; align-items: center; font-size: 20px; }
+        .status-badge { font-size: 10px; background: rgba(234,179,8,0.1); padding: 4px 8px; border: 1px solid #eab308; border-radius: 3px; color: #eab308; letter-spacing: 1px; cursor: help; }
+        .tabs { display: flex; border-bottom: 1px solid #334155; gap: 5px; }
+        .tab { background: #1e293b; color: #94a3b8; border: 1px solid #334155; border-bottom: none; padding: 10px 18px; cursor: pointer; border-radius: 3px 3px 0 0; font-family: monospace; font-size: 12px; }
+        .tab:hover { background: #334155; color: #f8fafc; }
+        .tab.active { background: #0c101b; color: #38bdf8; border-color: #475569 #475569 #0c101b #475569; font-weight: bold; }
+        .tab-content { display: none; padding-top: 25px; }
+        .tab-content.active { display: block; }
+        label { display: block; margin: 18px 0 6px; color: #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+        select, input, textarea { width: 100%; background: #0f172a; border: 1px solid #334155; color: #f1f5f9; padding: 12px; font-family: monospace; border-radius: 4px; box-sizing: border-box; font-size: 13px; }
+        .grid-2 { display: flex; gap: 15px; }
+        .grid-2 > div { flex: 1; }
+        button { background: #1e293b; border: 1px solid #38bdf8; color: #38bdf8; padding: 14px; width: 100%; margin-top: 25px; cursor: pointer; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; font-family: monospace; border-radius: 4px; }
+        button:hover { background: #38bdf8; color: #0f172a; }
+        .console-box { margin-top: 25px; padding: 18px; background: #020617; border: 1px solid #334155; border-left: 4px solid #38bdf8; border-radius: 4px; display: none; word-break: break-all; }
+        .latency-overlay { font-size: 11px; color: #64748b; margin-top: 10px; font-weight: bold; }
+        .progress-bar-container { width: 100%; background: #1e293b; height: 4px; margin-top: 12px; border-radius: 2px; overflow: hidden; }
+        .progress-bar { width: 100%; height: 100%; background: #38bdf8; transition: width 1s linear; }
+        .log-table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 11px; color: #cbd5e1; }
+        .log-table th, .log-table td { border: 1px solid #334155; padding: 10px; text-align: left; }
+        .log-table th { background: #1e293b; color: #94a3b8; text-transform: uppercase; font-size: 10px; letter-spacing: 1px; }
+        .alert-error { border-color: #ef4444 !important; border-left-color: #ef4444 !important; }
+        .alert-warn { border-color: #eab308 !important; border-left-color: #eab308 !important; }
+
+        .blueprint-note { background: #091424; border: 1px dashed #1e40af; border-left: 4px solid #3b82f6; padding: 15px; border-radius: 4px; margin-bottom: 20px; font-size: 12px; line-height: 1.5; color: #93c5fd; }
+        .blueprint-note b { color: #f8fafc; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        [data-tooltip] { position: relative; cursor: help; }
+        [data-tooltip]::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 130%;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #111827;
+            color: #93c5fd;
+            border: 1px solid #3b82f6;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            line-height: 1.4;
+            white-space: normal;
+            width: 250px;
+            display: none;
+            z-index: 999;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.7);
+            text-transform: none;
+            font-weight: normal;
+            letter-spacing: normal;
+        }
+        [data-tooltip]:hover::after { display: block; }
+    </style>
+</head>
+<body>
+
+<div class="fedramp-banner">
+    ⚠️ <b>US GOVERNMENT INFORMATION SYSTEM NOTICE AND CONSENT:</b> You are accessing a FedRAMP-simulated Zero-Trust Control Plane. This information system is provided for authorized educational and portfolio evaluation purposes only. All transactions, cryptographic payload originations, and input prompts are subjected to continuous real-time logging, interception, and auditing. Unauthorized attempts to exploit this control boundary are strictly monitored.
+</div>
+
+<div class="suite-card">
+    <div class="classification-header">
+        <span data-tooltip="Controlled Unclassified Information. Simulates the highest level of FedRAMP cloud security authorization, requiring strict data isolation boundaries.">SECURITY BOUNDARY: CUI // FEDRAMP-HIGH-SIM</span>
+        <span>SYS_VER: 2.9.5 (MATRIX-COMPLETE)</span>
+    </div>
+    <h2>🛡️ ShieldInbound Audit Suite <span class="status-badge" data-tooltip="Federal standard categorizing systems where a security breach would cause severe or catastrophic damage to organizational operations, assets, or individuals.">FIPS 199 HIGH IMPACT</span></h2>
+    
+    <div class="grid-2" style="background: #0f172a; padding: 12px; border: 1px dashed #334155; border-radius: 4px; margin-bottom: 20px;">
+        <div>
+            <label style="margin: 0 0 5px 0;">Isolated Cryptographic Tenant Target</label>
+            <select id="tenantSelection">
+                <option value="GOV-DEPT-ENERGY-01">GOV-DEPT-ENERGY-01 (Production Enclave)</option>
+                <option value="GOV-DEPT-DEFENSE-04">GOV-DEPT-DEFENSE-04 (Air-Gapped Core)</option>
+                <option value="COMMERCIAL-SANDBOX-TEST">COMMERCIAL-SANDBOX-TEST (Low-Impact Dev)</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <button class="tab active" onclick="switchTab(event, 'jit-tab')">🔑 JIT Issuance</button>
+        <button class="tab" onclick="switchTab(event, 'shield-tab')">🤖 Prompt Guardrail</button>
+        <button class="tab" onclick="switchTab(event, 'audit-tab')" id="auditLogBtn">📋 SIEM Audit Logs</button>
+    </div>
+
+    <div id="jit-tab" class="tab-content active">
+        <div class="blueprint-note">
+            ⚙️ <b>Production Architecture Real-World Blueprint:</b> In an enterprise production topology, engineers do not manually click this button to mint credentials for routine operations. This console functions as an administrative emergency override pane for SecOps teams. In standard workflows, this JIT engine integrates natively with automated <b>IAM/PIM orchestration layers</b> (such as Azure PIM or HashiCorp Vault). Requests are programmatically triggered via webhooks when a high-severity ticket is approved, automatically streaming the asymmetric token directly to the calling microservice or engineer's terminal session without human intervention.
+        </div>
+
+        <p style="color: #94a3b8; margin: 0 0 15px 0; font-size: 13px;">Authorize automated asymmetric cryptographic lease creation matching temporary boundary scopes.</p>
+        
+        <label for="scope">Target Cryptographic Access Scope</label>
+        <select id="scope">
+            <option value="https://graph.microsoft.com/Directory.ReadWrite.All">Directory.ReadWrite.All (Entra Global Admin Elevation)</option>
+            <option value="https://management.azure.com/Microsoft.KeyVault/vaults/secrets/write">Microsoft.KeyVault/vaults/secrets/write (HSM Cryptographic Root Key Mutation)</option>
+        </select>
+        
+        <label>Boundary Lease Lifespan (TTL)</label>
+        <input type="number" id="ttlValue" value="5" min="1">
+        
+        <button onclick="mintAsymmetricToken()">Generate Secure Lease Signature</button>
+        
+        <div id="jitConsole" class="console-box">
+            <span style="color: #94a3b8; font-size: 11px; font-weight: bold;">CRYPTOGRAPHICALLY SIGNED ASSERTION TOKEN (RS256):</span>
+            <p id="tokenString" style="color: #38bdf8; font-size: 12px; margin: 8px 0; font-family: monospace;"></p>
+            <span style="color: #94a3b8; font-size: 11px; font-weight: bold;">FIPS-COMPLIANT PUBLIC KEY VERIFICATION DESCRIPTOR (JWK):</span>
+            <p id="publicKeyString" style="color: #eab308; font-size: 11px; margin: 8px 0;"></p>
+            <div style="display: flex; justify-content: space-between; color: #94a3b8; font-size: 12px; margin-top: 15px;">
+                <span>Time Until Hardware Registry Purge:</span>
+                <span id="countdown" style="font-weight: bold; color: #f1f5f9;">0s</span>
+            </div>
+            <div class="progress-bar-container"><div id="progressBar" class="progress-bar"></div></div>
+            <div class="latency-overlay" id="jitLatency"></div>
+        </div>
+    </div>
+
+    <div id="shield-tab" class="tab-content">
+        <div class="blueprint-note">
+            ⚙️ <b>Production Architecture Real-World Blueprint:</b> In a live enterprise environment, engineers do not interact with this UI manually. The frontend panels seen here are designed strictly as an administrative plane for SecOps and compliance auditors. In an engineering workflow, this backend operates as an <b>invisible inline API proxy</b>. By remapping the base API routing endpoint in developer IDEs (e.g., VS Code extensions) to point directly to our proxy gateway, all incoming prompt vectors undergo silent, sub-millisecond heuristic parsing before hitting downstream LLM endpoints.
+        </div>
+
+        <p style="color: #94a3b8; margin: 0 0 15px 0; font-size: 13px;">Interception gateway utilizing content heuristic guardrails to block prompt attacks against secure downstream model networks.</p>
+        <label for="promptInput">Inbound LLM Prompt Payload Target</label>
+        <textarea id="promptInput" rows="4" placeholder="Input string payload for security posture evaluation..."></textarea>
+        <button onclick="testPromptShield()">Analyze Payload Security</button>
+        
+        <div id="shieldConsole" class="console-box">
+            <p id="shieldOutput" style="margin: 0; font-size: 13px;"></p>
+            <div class="latency-overlay" id="shieldLatency"></div>
+        </div>
+    </div>
+
+    <div id="audit-tab" class="tab-content">
+        <div class="blueprint-note">
+            ⚙️ <b>Production Architecture Real-World Blueprint:</b> In a live enterprise defense posture, security analysts do not manually refresh a web table to check for threats. This interface simulates an administrative dashboard parsing telemetry directly from a security data lake. In standard cloud deployments, this backend engine utilizes <b>structured JSON logging</b> to stream high-fidelity event payloads directly into centralized enterprise systems (such as Azure Log Analytics, Microsoft Sentinel, or Splunk). These platforms ingest millions of events per second, running automated correlation rules that instantly trigger alerts or isolate compromised cloud components when compliance violations are flagged.
+        </div>
+
+        <p style="color: #94a3b8; margin: 0 0 15px 0; font-size: 13px;">Cross-Framework Compliant System Event Tracking streamed directly from transactional memory arrays.</p>
+        <button onclick="refreshAuditLogs()" style="margin-top: 0; width: auto; font-size: 11px; padding: 8px 16px;">🔄 Query SIEM Indexes</button>
+        <table class="log-table">
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>System Event ID</th>
+                    <th>Tenant Target</th>
+                    <th>Compliance Mapping (NIST/ISO/SOC2)</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="logTableBody">
+                <tr><td colspan="5" style="text-align: center;">Querying ledger indexes...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    let timerInterval;
+
+    const tooltipDescriptions = {
+        "NIST AC-2 | ISO A.5.15 | SOC2 CC6.3": "Unified access control mapping verifying temporary Account Management, Access Rights Lifecycles, and Least Privilege enforcement.",
+        "NIST SI-4 | ISO A.8.12 | SOC2 CC7.2": "Unified guardrail control mapping verifying active Information System Monitoring, Data Leakage Prevention (DLP), and Vulnerability Interception.",
+        "NIST SC-5 | ISO A.8.20 | SOC2 CC8.1": "Unified system resilience mapping verifying automated monitoring and defense against network resource exhaustion or Denial of Service (DoS) attacks."
+    };
+
+    function switchTab(evt, tabId) {
+        const contents = document.querySelectorAll('.tab-content');
+        contents.forEach(c => c.classList.remove('active'));
+        const tabs = document.querySelectorAll('.tab');
+        tabs.forEach(t => t.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        evt.currentTarget.classList.add('active');
+        if(tabId === 'audit-tab') refreshAuditLogs();
+    }
+
+    function checkThrottling(res, data, consoleElement) {
+        if (res.status === 429) {
+            consoleElement.style.display = 'block';
+            consoleElement.classList.add('alert-warn');
+            consoleElement.innerHTML = `⚠️ <b style="color:#eab308;">${data.state || 'THROTTLED'}</b><br><span style="color:#cbd5e1;">${data.message || 'Adaptive edge rate-limiting active.'}</span><br><br><span style="color:#64748b; font-size:11px;">Gateway Latency: 12ms</span>`;
+            return true;
+        }
+        return false;
+    }
+
+    async function mintAsymmetricToken() {
+        clearInterval(timerInterval);
+        const scope = document.getElementById('scope').value;
+        const ttl = parseInt(document.getElementById('ttlValue').value);
+        const tenant = document.getElementById('tenantSelection').value;
+
+        const consoleBox = document.getElementById('jitConsole');
+        consoleBox.style.display = 'block';
+        consoleBox.className = 'console-box'; 
+        document.getElementById('tokenString').innerText = "Running RSA cryptographic signature routines...";
+        document.getElementById('publicKeyString').innerText = "";
+        document.getElementById('jitLatency').innerText = "";
+
+        try {
+            const res = await fetch('/api/hello', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: "mint", scope: scope, ttl: ttl, tenantId: tenant })
+            });
+            const data = await res.json();
+            
+            if (checkThrottling(res, data, consoleBox)) return;
+
+            document.getElementById('tokenString').innerText = data.token;
+            document.getElementById('publicKeyString').innerText = JSON.stringify(data.publicKey);
+            document.getElementById('jitLatency').innerText = `⚡ Cryptographic Core Compute Latency: ${data.latency}ms`;
+            
+            let timeLeft = ttl;
+            document.getElementById('progressBar').style.width = '100%';
+            document.getElementById('progressBar').style.backgroundColor = '#38bdf8';
+            document.getElementById('countdown').innerText = `${timeLeft}s`;
+
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                document.getElementById('countdown').innerText = `${timeLeft}s`;
+                let pct = (timeLeft / ttl) * 100;
+                document.getElementById('progressBar').style.width = `${pct}%`;
+                if(timeLeft <= 2) document.getElementById('progressBar').style.backgroundColor = '#ef4444';
+                if(timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    document.getElementById('tokenString').innerHTML = '<span style="color: #ef4444; font-weight: bold;">[STATUS] CRYPTOGRAPHIC CORE ZEROIZED — Volatile memory registers flushed per FIPS 140-3 specifications.</span>';
+                    document.getElementById('countdown').innerText = 'ZEROIZED';
+                }
+            }, 1000);
+        } catch(e) {
+            document.getElementById('tokenString').innerText = "Failed: " + e.message;
+        }
+    }
+
+    async function testPromptShield() {
+        const input = document.getElementById('promptInput').value;
+        const tenant = document.getElementById('tenantSelection').value;
+        const consoleBox = document.getElementById('shieldConsole');
+        consoleBox.style.display = 'block';
+        consoleBox.className = 'console-box';
+        document.getElementById('shieldOutput').innerText = "Running heuristic inspection array...";
+        document.getElementById('shieldLatency').innerText = "";
+
+        try {
+            const res = await fetch('/api/hello', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: "shield", prompt: input, tenantId: tenant })
+            });
+            const data = await res.json();
+            
+            if (checkThrottling(res, data, consoleBox)) return;
+
+            document.getElementById('shieldLatency').innerText = `⚡ Guardrail Pipeline Inspection Latency: ${data.latency}ms`;
+            if(data.status === "REJECTED") {
+                consoleBox.classList.add('alert-error');
+                document.getElementById('shieldOutput').innerHTML = `🛑 <b>POLICY VIOLATION DETECTED:</b> ${data.message} <br><span style="color:#f87171;">Reason: ${data.reason}</span>`;
+            } else {
+                document.getElementById('shieldOutput').innerHTML = `🔹 <b>INSPECTION COMPLIANT:</b> ${data.message}`;
+            }
+        } catch(e) {
+            document.getElementById('shieldOutput').innerText = "Failed: " + e.message;
+        }
+    }
+
+    async function refreshAuditLogs() {
+        try {
+            const res = await fetch('/api/hello?action=logs');
+            const data = await res.json();
+            const tbody = document.getElementById('logTableBody');
+            tbody.innerHTML = '';
+            
+            if(!data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color:#94a3b8;">No systemic transaction ledgers found.</td></tr>';
+                return;
+            }
+
+            data.forEach(log => {
+                let statusColor = '#38bdf8';
+                if(log.status === 'VIOLATION' || log.status === 'BLOCKED') statusColor = '#ef4444';
+                if(log.status === 'THROTTLED') statusColor = '#eab308';
+                
+                const hoverText = tooltipDescriptions[log.mapping] || "System audit compliance tracker entry.";
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${log.time}</td>
+                        <td>${log.event}</td>
+                        <td style="color:#eab308;">${log.tenant}</td>
+                        <td style="color:#3ba6f6; font-weight: bold;" data-tooltip="${hoverText}">${log.mapping}</td>
+                        <td style="color:${statusColor}; font-weight:bold;">${log.status}</td>
+                    </tr>
+                `;
+            });
+        } catch(e) {
+            console.error("Failed logs fetch:", e);
+        }
+    }
+</script>
+
+</body>
+</html>
