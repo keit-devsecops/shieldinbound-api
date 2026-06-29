@@ -3,6 +3,8 @@
 **A FedRAMP-High Simulated Zero-Trust Control Plane**
 *Serverless - Azure Static Web Apps - Node.js Azure Functions v4*
 
+**Designed & Built by Tory Keit — Systems IT Architect Lead**
+
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-Azure%20SWA-0ea5e9?style=flat-square)](https://gray-cliff-0ed98850f.7.azurestaticapps.net)
 [![Azure](https://img.shields.io/badge/Platform-Azure%20Static%20Web%20Apps-0078d4?style=flat-square&logo=microsoftazure)](https://azure.microsoft.com/en-us/products/app-service/static)
 [![License](https://img.shields.io/badge/License-MIT-64748b?style=flat-square)](LICENSE)
@@ -159,8 +161,8 @@ Configured globally via staticwebapp.config.json and enforced at the Azure CDN e
 
 ## Author
 
-**Tory Keit**
-Lead Systems Architect - Zero Trust and FedRAMP Compliance
+**Tory Keit** — Systems IT Architect Lead
+Designer & Developer of the ShieldInbound Audit Suite
 Live Demo: https://gray-cliff-0ed98850f.7.azurestaticapps.net
 
 ---
