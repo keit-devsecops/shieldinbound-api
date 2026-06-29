@@ -71,7 +71,7 @@
 <div class="suite-card">
     <div class="classification-header">
         <span data-tooltip="Controlled Unclassified Information. Simulates the highest level of FedRAMP cloud security authorization, requiring strict data isolation boundaries.">SECURITY BOUNDARY: CUI // FEDRAMP-HIGH-SIM</span>
-        <span>SYS_VER: 2.9.5 (MATRIX-COMPLETE)</span>
+        <span>SYS_VER: 2.9.5</span>
     </div>
     <h2>🛡️ ShieldInbound Audit Suite <span class="status-badge" data-tooltip="Federal standard categorizing systems where a security breach would cause severe or catastrophic damage to organizational operations, assets, or individuals.">FIPS 199 HIGH IMPACT</span></h2>
     
@@ -218,7 +218,7 @@
 
             document.getElementById('tokenString').innerText = data.token;
             document.getElementById('publicKeyString').innerText = JSON.stringify(data.publicKey);
-            document.getElementById('jitLatency').innerText = `⚡ Cryptographic Core Compute Latency: ${data.latency}ms`;
+            document.getElementById('jitLatency').innerText = `⚡ Measured RSA Signing Latency: ${data.latency}ms`;
             
             let timeLeft = ttl;
             document.getElementById('progressBar').style.width = '100%';
@@ -261,12 +261,37 @@
             
             if (checkThrottling(res, data, consoleBox)) return;
 
-            document.getElementById('shieldLatency').innerText = `⚡ Guardrail Pipeline Inspection Latency: ${data.latency}ms`;
-            if(data.status === "REJECTED") {
+            document.getElementById('shieldLatency').innerText = `⚡ Measured Guardrail Inspection Latency: ${data.latency}ms`;
+            const tier = data.tier || (data.status === "REJECTED" ? "VIOLATION" : "COMPLIANT");
+            if (tier === "CRITICAL") {
                 consoleBox.classList.add('alert-error');
-                document.getElementById('shieldOutput').innerHTML = `🛑 <b>POLICY VIOLATION DETECTED:</b> ${data.message} <br><span style="color:#f87171;">Reason: ${data.reason}</span>`;
+                document.getElementById('shieldOutput').innerHTML = `
+                    🚨 <b style="color:#ef4444;">CRITICAL — MULTI-VECTOR ATTACK DETECTED</b><br>
+                    <span style="color:#fca5a5;">${data.message}</span><br><br>
+                    <span style="color:#94a3b8;font-size:11px;">Reason: ${data.reason}</span><br>
+                    <span style="color:#64748b;font-size:11px;">Attack Families: ${data.families} &nbsp;|&nbsp; Total Signals: ${data.signals}</span>`;
+            } else if (tier === "VIOLATION") {
+                consoleBox.classList.add('alert-error');
+                document.getElementById('shieldOutput').innerHTML = `
+                    🛑 <b style="color:#ef4444;">VIOLATION — POLICY BREACH DETECTED</b><br>
+                    <span style="color:#fca5a5;">${data.message}</span><br><br>
+                    <span style="color:#94a3b8;font-size:11px;">Reason: ${data.reason}</span><br>
+                    <span style="color:#64748b;font-size:11px;">Attack Families: ${data.families} &nbsp;|&nbsp; Total Signals: ${data.signals}</span>`;
+            } else if (tier === "FLAGGED") {
+                consoleBox.classList.add('alert-warn');
+                document.getElementById('shieldOutput').innerHTML = `
+                    ⚠️ <b style="color:#eab308;">FLAGGED — SOFT ANOMALY SIGNAL</b><br>
+                    <span style="color:#fde68a;">${data.message}</span><br><br>
+                    <span style="color:#94a3b8;font-size:11px;">Reason: ${data.reason}</span><br>
+                    <span style="color:#64748b;font-size:11px;">Attack Families: ${data.families} &nbsp;|&nbsp; Total Signals: ${data.signals}</span>`;
+            } else if (tier === "BLOCKED") {
+                consoleBox.classList.add('alert-error');
+                document.getElementById('shieldOutput').innerHTML = `
+                    🔒 <b style="color:#ef4444;">BLOCKED — CUI DATA LEAK INTERCEPTED</b><br>
+                    <span style="color:#fca5a5;">${data.message}</span><br><br>
+                    <span style="color:#94a3b8;font-size:11px;">Reason: ${data.reason}</span>`;
             } else {
-                document.getElementById('shieldOutput').innerHTML = `🔹 <b>INSPECTION COMPLIANT:</b> ${data.message}`;
+                document.getElementById('shieldOutput').innerHTML = `🔹 <b style="color:#38bdf8;">INSPECTION COMPLIANT:</b> <span style="color:#cbd5e1;">${data.message}</span>`;
             }
         } catch(e) {
             document.getElementById('shieldOutput').innerText = "Failed: " + e.message;
@@ -287,8 +312,9 @@
 
             data.forEach(log => {
                 let statusColor = '#38bdf8';
+                if(log.status === 'CRITICAL') statusColor = '#dc2626';
                 if(log.status === 'VIOLATION' || log.status === 'BLOCKED') statusColor = '#ef4444';
-                if(log.status === 'THROTTLED') statusColor = '#eab308';
+                if(log.status === 'FLAGGED' || log.status === 'THROTTLED') statusColor = '#eab308';
                 
                 const hoverText = tooltipDescriptions[log.mapping] || "System audit compliance tracker entry.";
 
